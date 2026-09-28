@@ -3,3 +3,4 @@ pandas
 numpy
 duckdb
 plotly
+scipy
