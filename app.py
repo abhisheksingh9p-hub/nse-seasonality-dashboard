@@ -1,5 +1,5 @@
 """
-NSE Seasonality Dashboard (With Symbol Click Drill-Down Pattern Viewer)
+NSE Equity Seasonality Dashboard
 """
 
 import datetime
@@ -46,31 +46,22 @@ if st.sidebar.button("🚀 Run Scan", type="primary", use_container_width=True):
     st.session_state["ran_scan"] = True
 
 if st.session_state.get("ran_scan", False):
-    progress_bar = st.progress(0, text="Scanning dataset...")
-
-    def _update_progress(current, total, symbol):
-        pct = int((current / total) * 100) if total else 0
-        progress_bar.progress(min(pct, 100), text=f"Scanning {symbol} ({current}/{total})")
-
-    try:
-        df_results = engine.run_seasonality_scan(
-            start_date_obj=start_date,
-            end_date_obj=end_date,
-            holding_days=holding_days,
-            lookback_years=lookback_years,
-            min_win_ratio=min_win_ratio,
-            max_loss_limit=max_loss_limit,
-            date_flexibility_days=date_flexibility,
-            min_trades=min_trades,
-            progress_callback=_update_progress,
-        )
-        st.session_state["df_results"] = df_results
-    except Exception as e:
-        progress_bar.empty()
-        st.error(f"Error: {str(e)}")
-        st.stop()
-
-    progress_bar.empty()
+    with st.spinner("⚡ Running In-Memory Fast Scan..."):
+        try:
+            df_results = engine.run_seasonality_scan(
+                start_date_obj=start_date,
+                end_date_obj=end_date,
+                holding_days=holding_days,
+                lookback_years=lookback_years,
+                min_win_ratio=min_win_ratio,
+                max_loss_limit=max_loss_limit,
+                date_flexibility_days=date_flexibility,
+                min_trades=min_trades,
+            )
+            st.session_state["df_results"] = df_results
+        except Exception as e:
+            st.error(f"Error: {str(e)}")
+            st.stop()
 
 if "df_results" in st.session_state and not st.session_state["df_results"].empty:
     df_results = st.session_state["df_results"]
@@ -86,7 +77,6 @@ if "df_results" in st.session_state and not st.session_state["df_results"].empty
     st.subheader("📊 Seasonal Opportunities Table")
     st.caption("👈 **Row Selection Enabled:** Table me kisi bhi row par click karein us stock ka historical breakdown dekhne ke liye.")
 
-    # Interactive Table Selection Event
     event = st.dataframe(
         df_results,
         use_container_width=True,
@@ -100,7 +90,6 @@ if "df_results" in st.session_state and not st.session_state["df_results"].empty
         },
     )
 
-    # Manual Symbol Selectbox backup for direct selection
     selected_symbol = None
     entry_date = None
 
@@ -112,7 +101,6 @@ if "df_results" in st.session_state and not st.session_state["df_results"].empty
 
     st.divider()
 
-    # Dropdown to manually pick if user doesn't click row
     col_sel1, col_sel2 = st.columns([2, 4])
     with col_sel1:
         chosen_sym = st.selectbox(
@@ -124,7 +112,6 @@ if "df_results" in st.session_state and not st.session_state["df_results"].empty
             selected_symbol = chosen_sym
             entry_date = df_results[df_results["Symbol"] == selected_symbol].iloc[0]["Entry Date"]
 
-    # --- HISTORICAL BREAKDOWN DISPLAY ---
     if selected_symbol and entry_date:
         st.subheader(f"🔍 Historical Pattern Breakdown: **{selected_symbol}** ({lookback_years} Years Lookback)")
         st.caption(f"Seasonal Entry: **{entry_date}** | Holding Period: **{holding_days} Days**")
